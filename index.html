@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Citizen Feedback - Rwanda</title>
+<link rel="stylesheet" href="mytheme.css">
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>Report an Issue or Share Feedback</h1>
+        <p>Help us improve public services in Rwanda.</p>
+    </header>
+
+    <section id="submission-form">
+        <h2>Submit Your Feedback</h2>
+        <form id="citizenForm">
+            <div class="form-group">
+                <label for="category">Category:</label>
+                <select id="category" name="category" required>
+                    <option value="" disabled selected>Select a category</option>
+                    <option value="roads">Roads and Transportation</option>
+                    <option value="water">Water and Sanitation</option>
+                    <option value="electricity">Electricity and Energy</option>
+                    <option value="healthcare">Healthcare Services</option>
+                    <option value="education">Education</option>
+                    <option value="safety">Public Safety and Security</option>
+                    <option value="waste">Waste Management</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="priority">Priority:</label>
+                <select id="priority" name="priority" required>
+                    <option value="" disabled selected>Select priority</option>
+                    <option value="urgent">Urgent</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="complaint">Complaint/Feedback:</label>
+                <textarea id="complaint" name="complaint" rows="5" required></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="location">Location (Optional):</label>
+                <input type="text" id="location" name="location" placeholder="e.g., Kimihurura, Kigali">
+            </div>
+
+            <div class="form-group">
+                <label for="phoneNumber">Phone Number:</label>
+                <input type="tel" id="phoneNumber" name="phoneNumber" placeholder="e.g., +250 78 123 4567" required>
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email Address:</label>
+                <input type="email" id="email" name="email" placeholder="e.g., name@example.com" required>
+            </div>
+
+            <button type="submit" class="submit-button">Submit Feedback</button>
+            <div id="submission-message" class="hidden"></div>
+        </form>
+        <a href="admin.html">admin</a>
+    </section>
+
+    <section id="tracking">
+        <h2>Track Your Submission</h2>
+        <div class="tracking-form">
+            <label for="ticketId">Enter your Ticket ID:</label>
+            <input type="text" id="ticketId" name="ticketId" placeholder="e.g., TKT-2025-001">
+            <button id="trackButton" class="track-button">Track Status</button>
+        </div>
+        <div id="status-display" class="hidden"></div>
+        <div id="detailed-status" class="hidden">
+            <h3>Complaint Details</h3>
+            <div class="status-grid">
+                <div class="status-timeline">
+                    <h4>Progress Timeline</h4>
+                    <ul id="timeline-list"></ul>
+                </div>
+                <div class="status-details">
+                    <h4>Details</h4>
+                    <table id="details-table">
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<script type="module">
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-app.js";
+    import { 
+        getFirestore, 
+        collection, 
+        addDoc, 
+        doc, 
+        getDoc 
+    } from "https://www.gstatic.com/firebasejs/11.7.3/firebase-firestore.js";
+
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+        apiKey: "AIzaSyCcNFwX5pGlz2nRJXYlbc3_Pz4R0k6s8Xs",
+        authDomain: "mvp-db-21c9b.firebaseapp.com",
+        projectId: "mvp-db-21c9b",
+        storageBucket: "mvp-db-21c9b.firebasestorage.app",
+        messagingSenderId: "198610566372",
+        appId: "1:198610566372:web:df58c6fa2207facdd400f1",
+        measurementId: "G-JWHP8XDN85"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // Form submission handling
+    const citizenForm = document.getElementById('citizenForm');
+    const submissionMessage = document.getElementById('submission-message');
+    const trackButton = document.getElementById('trackButton');
+    const ticketIdInput = document.getElementById('ticketId');
+    const statusDisplay = document.getElementById('status-display');
+
+    // Function to handle form submission
+    citizenForm.addEventListener('submit', async (event) => {
+        event.preventDefault(); // Prevent default form submission
+        console.log("Form submitted");
+
+        const category = document.getElementById('category').value;
+        const priority = document.getElementById('priority').value;
+        const complaint = document.getElementById('complaint').value;
+        const location = document.getElementById('location').value;
+        const submittedDate = new Date().toISOString();
+        const status = 'New';
+        const assignedAgency = 'Ministry of Infrastructure';
+
+        const formData = {
+            category: category,
+            priority: priority,
+            complaint: complaint,
+            location: location || '',
+            phoneNumber: document.getElementById('phoneNumber').value,
+            email: document.getElementById('email').value,
+            submittedDate: submittedDate,
+            status: status,
+            assignedAgency: assignedAgency,
+            agencyResponse: '', // Initially empty
+            responseDate: '', // Initially empty
+            statusHistory: [
+                {
+                    status: 'New',
+                    date: submittedDate,
+                    notes: 'Complaint submitted'
+                }
+            ]
+        };
+
+        console.log("Submitting data:", formData);
+
+        try {
+            // Add a new document to the 'complaints' collection
+            const docRef = await addDoc(collection(db, 'complaints'), formData);
+            console.log('Document written with ID: ', docRef.id);
+            submissionMessage.textContent = `Your feedback has been submitted successfully! Your Ticket ID is: ${docRef.id}. Please use this ID to track your submission.`;
+            submissionMessage.className = 'success';
+            submissionMessage.classList.remove('hidden');
+            citizenForm.reset(); // Clear the form
+            setTimeout(() => {
+                submissionMessage.classList.add('hidden');
+            }, 5000); // Hide message after 5 seconds
+        } catch (error) {
+            console.error('Error adding document: ', error);
+            submissionMessage.textContent = 'There was an error submitting your feedback. Please try again: ' + error.message;
+            submissionMessage.className = 'error';
+            submissionMessage.classList.remove('hidden');
+        }
+    });
+
+    // Function to handle status tracking
+    trackButton.addEventListener('click', async () => {
+        const ticketIDToTrack = ticketIdInput.value.trim();
+
+        if (!ticketIDToTrack) {
+            statusDisplay.textContent = 'Please enter your Ticket ID.';
+            statusDisplay.className = 'error';
+            statusDisplay.classList.remove('hidden');
+            document.getElementById('detailed-status').classList.add('hidden');
+            return;
+        }
+
+        try {
+            // Get the document with the matching ID from the 'complaints' collection
+            const complaintRef = doc(db, 'complaints', ticketIDToTrack);
+            const docSnap = await getDoc(complaintRef);
+
+            if (docSnap.exists()) {
+                const complaintData = docSnap.data();
+                const status = complaintData.status;
+                const response = complaintData.agencyResponse || 'No response yet.';
+                
+                // Basic status display
+                statusDisplay.textContent = `Ticket Status: ${status}`;
+                statusDisplay.className = 'success';
+                statusDisplay.classList.remove('hidden');
+                
+                // Show detailed status section
+                const detailedStatus = document.getElementById('detailed-status');
+                detailedStatus.classList.remove('hidden');
+                
+                // Create timeline items
+                const timelineList = document.getElementById('timeline-list');
+                timelineList.innerHTML = '';
+                
+                if (complaintData.statusHistory && complaintData.statusHistory.length > 0) {
+                    complaintData.statusHistory.forEach(history => {
+                        const li = document.createElement('li');
+                        const date = new Date(history.date).toLocaleString();
+                        li.innerHTML = `<strong>${history.status}</strong> - ${date}<br>${history.notes || ''}`;
+                        timelineList.appendChild(li);
+                    });
+                } else {
+                    // If no history, create a single entry based on available data
+                    const li = document.createElement('li');
+                    const date = new Date(complaintData.submittedDate).toLocaleString();
+                    li.innerHTML = `<strong>${complaintData.status}</strong> - ${date}<br>Complaint submitted`;
+                    timelineList.appendChild(li);
+                }
+                
+                // Create details table
+                const detailsTable = document.getElementById('details-table');
+                detailsTable.innerHTML = `
+                    <tr><th>Ticket ID</th><td>${ticketIDToTrack}</td></tr>
+                    <tr><th>Category</th><td>${complaintData.category}</td></tr>
+                    <tr><th>Priority</th><td>${complaintData.priority}</td></tr>
+                    <tr><th>Submitted On</th><td>${new Date(complaintData.submittedDate).toLocaleString()}</td></tr>
+                    <tr><th>Location</th><td>${complaintData.location || 'Not specified'}</td></tr>
+                    <tr><th>Contact Info</th><td>Phone: ${complaintData.phoneNumber || 'Not provided'}<br>Email: ${complaintData.email || 'Not provided'}</td></tr>
+                    <tr><th>Assigned To</th><td>${complaintData.assignedAgency}</td></tr>
+                    <tr><th>Status</th><td>${complaintData.status}</td></tr>
+                    <tr><th>Response</th><td>${complaintData.agencyResponse || 'No response yet'}</td></tr>
+                `;
+                
+            } else {
+                statusDisplay.textContent = `Ticket ID "${ticketIDToTrack}" not found. Please check your ID.`;
+                statusDisplay.className = 'error';
+                statusDisplay.classList.remove('hidden');
+                document.getElementById('detailed-status').classList.add('hidden');
+            }
+        } catch (error) {
+            console.error('Error getting document: ', error);
+            statusDisplay.textContent = 'Error fetching data. Please try again later: ' + error.message;
+            statusDisplay.className = 'error';
+            statusDisplay.classList.remove('hidden');
+            document.getElementById('detailed-status').classList.add('hidden');
+        }
+    });
+</script>
+
+</body>
+</html>
+<!-- THIS IS THE CODE I WANTED YOU TO ENHANCE, OKAY?? CHECK OUT THE OTHER -->
